@@ -1,6 +1,12 @@
+from math import dist
+
 import matplotlib.pyplot as plt
 import numpy as np
 
+R_BALL = 20
+R_PIN = 5
+BALL_W = 10
+PIN_W = 0.5
 
 def create_video(all_obj_locs):
     plt.scatter()
@@ -16,6 +22,17 @@ def memoize(f):
 
     return helper
 
+
+def still_going(ball_stats):
+    pins_loc = [(720,20.5), (730.375, 26.5), (740.75, 32.5), (751.125, 38.5)
+                ,(730.375, 14.5), (740.75, 8.5), (751.125, 2.5)]
+    pins_loc = [(2.54*p[0], 2.54*p[1]) for p in pins_loc]
+    if ball_stats[0] > 41*2.54 or ball_stats[0] < 0:
+        return False
+    for p in pins_loc:
+        if dist((ball_stats[0], ball_stats[1]), p) < R_BAll + R_PIN:
+            return False
+    return True
 
 @memoize
 def simulate_throw(x, vx, vy, wx, wy, show_video=False):
