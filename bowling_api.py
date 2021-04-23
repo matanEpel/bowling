@@ -56,7 +56,7 @@ def simulate_throw(x, vx, vy, wx, wy, show_video=False):
     ball_locs = []
     ball_stats = np.array([x, 0, vx, vy, wx, wy])
     while not still_going(ball_stats):
-        ball_stats = calc_throw_dt(ball_stats)  # TODO MED
+        ball_stats = calc_throw_dt(ball_stats)
         ball_locs.append(ball_stats[:2])
 
     if show_video:
