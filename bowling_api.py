@@ -24,6 +24,8 @@ def memoize(f):
 
 
 def still_going(ball_stats):
+    if ball_stats[2] < 0 or ball_stats[3] < 0:
+        return False
     pins_loc = [(720,20.5), (730.375, 26.5), (740.75, 32.5), (751.125, 38.5)
                 ,(730.375, 14.5), (740.75, 8.5), (751.125, 2.5)]
     pins_loc = [(2.54*p[0], 2.54*p[1]) for p in pins_loc]
