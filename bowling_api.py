@@ -21,7 +21,7 @@ def memoize(f):
 def simulate_throw(x, vx, vy, wx, wy, show_video=False):
     ball_locs = []
     ball_stats = np.array([x, 0, vx, vy, wx, wy])
-    while not reached_pins(ball_stats):
+    while not still_going(ball_stats):
         calc_throw_dt(ball_stats)  # TODO MED
         ball_locs.append(ball_stats[:2])
 
