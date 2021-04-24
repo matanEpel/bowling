@@ -13,7 +13,7 @@ G = 9.81
 
 
 def create_video(all_obj_locs):
-    plt.scatter()
+    plt.scatter()  # TODO
 
 
 def memoize(f):
@@ -65,7 +65,11 @@ def simulate_throw(x, vx, vy, wx, wy, show_video=False):
 
 
 def init_pins():
-    return np.zeros((10, 12))
+    return np.zeros((10, 12))  # TODO
+
+
+def get_locs(pins_stats, ball_stats):
+    return pins_stats[:, :6], ball_stats[:2]
 
 
 @memoize
@@ -87,6 +91,7 @@ def plot_graph(error_rates, avg_hits):
     plt.ylabel("Average pins hit")
     plt.plot(error_rates, avg_hits)
     plt.show()
+
 
 def main():
     error_rates = get_error_rates()
