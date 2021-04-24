@@ -82,6 +82,12 @@ def simulate_hits(x, y, vx, vy, wx, wy, show_video=False):
     return calc_score(pins_stats)
 
 
+def plot_graph(error_rates, avg_hits):
+    plt.xlabel("Error rates (σ)")
+    plt.ylabel("Average pins hit")
+    plt.plot(error_rates, avg_hits)
+    plt.show()
+
 def main():
     error_rates = get_error_rates()
     scores = np.zeros((error_rates, throw_num_per_error_rate))
