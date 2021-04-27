@@ -25,6 +25,6 @@ def create_video(all_obj_locs):
         plt.show()
         i += 1
 
-locs, s = simulate_throw(10, 0, 8, 0, 100, False, True)
-print([[p] for p in locs])
-create_video([[p*10] for p in locs])
+locs, s = simulate_throw(20.5*2.54, 0, 8, 0, 100, False, True)
+print(len(locs[::10]))
+# create_video([[p] for p in locs[::10]])

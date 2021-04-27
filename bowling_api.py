@@ -23,15 +23,17 @@ R_PIN = 5
 BALL_M = 10
 PIN_M = 0.5
 BALL_I = 2 / 5 * BALL_M * R_BALL * R_BALL
-OILED_MU = 0.25  # TODO
+OILED_MU = 0.04  # TODO
+NO_OIL_MU = 0.2  # TODO
 G = 9.81
-LANE_LENGTH = 1828.8
+LANE_LENGTH = 1910
 LANE_WIDTH = 105.41
 SIZE = 6
 BOWLING_SIZE = np.pi * R_BALL ** 2
 PIN_HEIGHT = 40
 ERR_RT = 0.01
 REPEATITIONS = 100
+DT = 0.1
 # TODO: change values:
 BEST_VY = 8
 BEST_VX = 4
@@ -51,9 +53,9 @@ def create_video(all_obj_locs):
         plt.figure(figsize=(SIZE * 2, SIZE), dpi=80)
         plt.xlim([-5, LANE_LENGTH])
         plt.ylim([-5, LANE_WIDTH])
-        x_s = [y for (x, y, size) in f]
-        y_s = [x for (x, y, size) in f]
-        s = [size * 40 * LANE_WIDTH / LANE_LENGTH for (x, y, size) in f]
+        x_s = [p[1] for p in f]
+        y_s = [p[0] for p in f]
+        s = 100
         plt.scatter(x_s, y_s, s=s)
         plt.savefig("data/frame" + str(i) + ".png")
         plt.show()
@@ -83,12 +85,12 @@ def still_going(ball_stats):
     :param ball_stats: velocity and location of the ball
     :return: if the ball should continue or not
     """
-    if ball_stats[3] == 0 and ball_stats[2] == 0:  # if vy = vx = 0 we should stop
+    if ball_stats[3] <= 0:  # if vy = vx = 0 we should stop
         return False
     pins_loc = [(720, 20.5), (730.375, 26.5), (740.75, 32.5), (751.125, 38.5)
         , (730.375, 14.5), (740.75, 8.5),
                 (751.125, 2.5)]  # the locations of the pins in inch's. TODO: update to correct
-    pins_loc = [(2.54 * p[0], 2.54 * p[1]) for p in pins_loc]  # converting to cm
+    pins_loc = [(2.54 * p[1], 2.54 * p[0]) for p in pins_loc]  # converting to cm
     if ball_stats[0] > 41 * 2.54 or ball_stats[0] < 0:  # checking if we are out of the lane
         return False
     for p in pins_loc:
@@ -107,7 +109,7 @@ def calc_throw_dt(ball_stats):
     Fx1, Fx2 = -OILED_MU * BALL_M * G * np.sign(ball_stats[2:4])
     ball_stats = ball_stats + np.array(
         #    x3              x4           Fx1/m         Fx2/m              Fx2*R/I             -Fx1*R/I
-        [ball_stats[2], ball_stats[3], Fx1 / BALL_M, Fx2 / BALL_M, Fx2 * R_BALL / BALL_I, -Fx1 * R_BALL / BALL_I]
+        [ball_stats[2]*DT, ball_stats[3]*DT, Fx1 / BALL_M*DT, Fx2 / BALL_M*DT, Fx2 * R_BALL / BALL_I*DT, -Fx1 * R_BALL / BALL_I*DT]
     )
     return ball_stats
 
