@@ -1,4 +1,6 @@
 from math import dist
+
+import cv2
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -33,7 +35,7 @@ BOWLING_SIZE = np.pi * R_BALL ** 2
 PIN_HEIGHT = 40
 ERR_RT = 0.01
 REPEATITIONS = 100
-DT = 0.1
+DT = 0.001
 # TODO: change values:
 BEST_VY = 8
 BEST_VX = 4
@@ -42,7 +44,22 @@ BEST_WY = 3
 DEFAULT_VAR = 0.1
 
 
-def create_video(all_obj_locs):
+def create_video_from_frames(amount_of_frames, fps):
+    img_array = []
+    for i in range(amount_of_frames):
+        img = cv2.imread('data/frame' + str(i) + '.png')
+        height, width, layers = img.shape
+        size = (width, height)
+        img_array.append(img)
+
+    out = cv2.VideoWriter('project.avi', cv2.VideoWriter_fourcc(*'DIVX'), fps, (960, 480))
+
+    for i in range(len(img_array)):
+        out.write(img_array[i])
+    out.release()
+
+
+def create_video(all_obj_locs, fps):
     """
     creating all the frames for the video by the locations of the ball and pins
     :param all_obj_locs: locations (x,y) of the ball and the pins
@@ -60,6 +77,7 @@ def create_video(all_obj_locs):
         plt.savefig("data/frame" + str(i) + ".png")
         plt.show()
         i += 1
+    create_video_from_frames(len(all_obj_locs), fps)
 
 
 def memoize(f):
@@ -109,7 +127,8 @@ def calc_throw_dt(ball_stats):
     Fx1, Fx2 = -OILED_MU * BALL_M * G * np.sign(ball_stats[2:4])
     ball_stats = ball_stats + np.array(
         #    x3              x4           Fx1/m         Fx2/m              Fx2*R/I             -Fx1*R/I
-        [ball_stats[2]*DT, ball_stats[3]*DT, Fx1 / BALL_M*DT, Fx2 / BALL_M*DT, Fx2 * R_BALL / BALL_I*DT, -Fx1 * R_BALL / BALL_I*DT]
+        [ball_stats[2] * DT, ball_stats[3] * DT, Fx1 / BALL_M * DT, Fx2 / BALL_M * DT, Fx2 * R_BALL / BALL_I * DT,
+         -Fx1 * R_BALL / BALL_I * DT]
     )
     return ball_stats
 
