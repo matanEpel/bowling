@@ -3,32 +3,47 @@ from math import dist
 import matplotlib.pyplot as plt
 import numpy as np
 
-R_BALL = 20
+R_BALL = 10.795
 R_PIN = 5
 BALL_M = 10
 PIN_M = 0.5
 BALL_I = 2 / 5 * BALL_M * R_BALL * R_BALL
 OILED_MU = 0.25  # TODO
 G = 9.81
+LANE_LENGTH = 1828.8
+LANE_WIDTH = 105.41
+SIZE = 6
+BOWLING_SIZE = np.pi*R_BALL**2
 
 
 def create_video(all_obj_locs):
-    plt.scatter()  # TODO
+    i = 0
+    for f in all_obj_locs:
+        plt.figure(figsize=(SIZE*2, SIZE), dpi=80)
+        plt.xlim([-5, LANE_LENGTH])
+        plt.ylim([-5, LANE_WIDTH])
+        x_s = [y for (x, y, size) in f]
+        y_s = [x for (x, y, size) in f]
+        s = [size*40*LANE_WIDTH/LANE_LENGTH for (x, y, size) in f]
+        plt.scatter(x_s, y_s,s=s)
+        plt.savefig("data/frame" + str(i)+".png")
+        plt.show()
+        i += 1
 
 
 def memoize(f):
     memo = {}
 
-    def helper(x):
+    def helper(*x):
         if x not in memo:
-            memo[x] = f(x)
+            memo[x] = f(*x)
         return memo[x]
 
     return helper
 
 
 def still_going(ball_stats):
-    if ball_stats[2] < 0 or ball_stats[3] < 0:
+    if ball_stats[3] < 0:
         return False
     pins_loc = [(720, 20.5), (730.375, 26.5), (740.75, 32.5), (751.125, 38.5)
         , (730.375, 14.5), (740.75, 8.5), (751.125, 2.5)]
@@ -52,15 +67,17 @@ def calc_throw_dt(ball_stats):
 
 
 @memoize
-def simulate_throw(x, vx, vy, wx, wy, show_video=False):
+def simulate_throw(x, vx, vy, wx, wy, show_video=False, ball_locs_return=False):
     ball_locs = []
     ball_stats = np.array([x, 0, vx, vy, wx, wy])
-    while not still_going(ball_stats):
+    while still_going(ball_stats):
         ball_stats = calc_throw_dt(ball_stats)
         ball_locs.append(ball_stats[:2])
 
     if show_video:
         create_video(ball_locs)
+    if ball_locs_return:
+        return ball_locs, ball_stats
     return ball_stats
 
 
