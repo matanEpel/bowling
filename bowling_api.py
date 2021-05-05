@@ -12,16 +12,16 @@ pin: (x1, y1, z1, x2, y2, z2, vx, vy, vz, wx, wy, wz
 # TODO:
 # 1. finding mu of oiled lane
 # 2. finding the best throwing parameters
-# 3. deciding on max variance we wnt in our throws (error rate will be in percentage out of this variance)
+# 3. deciding on max variance we want in our throws (error rate will be in percentage out of this variance)
 # 4. joining frames to video
 # 5. finding the correct locations of the pins
-# 6. creating the init_pins function (agter 5)
+# 6. creating the init_pins function (after 5)
 # 7. correcting the throw_dt function
 # 8. writing the hit_dt function
 
 
-R_BALL = 10.795
-R_PIN = 5
+R_BALL = 5
+R_PIN = 9.5
 BALL_M = 10
 PIN_M = 0.5
 BALL_I = 2 / 5 * BALL_M * R_BALL * R_BALL
@@ -36,6 +36,10 @@ PIN_HEIGHT = 40
 ERR_RT = 0.01
 REPEATITIONS = 100
 DT = 0.001
+ORIG_PINS_LOC = [(720, 20.5), (730.375, 26.5), (740.75, 32.5), (751.125, 38.5), (730.375, 14.5), (740.75, 8.5),
+                 (751.125, 2.5), (740.75, 20.5), (751.125, 26.5),
+                 (751.125, 14.5)]  # the locations of the pins in inch's.
+ORIG_PINS_LOC = [(2.54 * p[1], 2.54 * p[0]) for p in ORIG_PINS_LOC]  # converting to cm
 # TODO: change values:
 BEST_VY = 8
 BEST_VX = 4
@@ -48,8 +52,6 @@ def create_video_from_frames(amount_of_frames, fps):
     img_array = []
     for i in range(amount_of_frames):
         img = cv2.imread('data/frame' + str(i) + '.png')
-        height, width, layers = img.shape
-        size = (width, height)
         img_array.append(img)
 
     out = cv2.VideoWriter('project.avi', cv2.VideoWriter_fourcc(*'DIVX'), fps, (960, 480))
@@ -59,10 +61,11 @@ def create_video_from_frames(amount_of_frames, fps):
     out.release()
 
 
-def create_video(all_obj_locs, fps):
+def create_video(all_obj_locs, fps=30):
     """
     creating all the frames for the video by the locations of the ball and pins
     :param all_obj_locs: locations (x,y) of the ball and the pins
+    :param fps: frames per second of video
     :return: none
     """
     i = 0
@@ -105,12 +108,10 @@ def still_going(ball_stats):
     """
     if ball_stats[3] <= 0:  # if vy = vx = 0 we should stop
         return False
-    pins_loc = [(720, 20.5), (730.375, 26.5), (740.75, 32.5), (751.125, 38.5)
-        , (730.375, 14.5), (740.75, 8.5),
-                (751.125, 2.5)]  # the locations of the pins in inch's. TODO: update to correct
-    pins_loc = [(2.54 * p[1], 2.54 * p[0]) for p in pins_loc]  # converting to cm
+
     if ball_stats[0] > 41 * 2.54 or ball_stats[0] < 0:  # checking if we are out of the lane
         return False
+    pins_loc = ORIG_PINS_LOC.copy()
     for p in pins_loc:
         if dist((ball_stats[0], ball_stats[1]), p) < R_BALL + R_PIN:  # checking if we hit one of the balls
             return False
@@ -185,7 +186,103 @@ def simulate_throw(x, vx, vy, wx, wy, show_video=False, ball_locs_return=False):
 
 
 def init_pins():
-    return np.zeros((10, 12))  # TODO
+    pins_loc = ORIG_PINS_LOC.copy()
+    pins = np.hstack((pins_loc, R_PIN * np.ones((10, 1)), np.zeros((10, 3))))
+    return pins
+
+
+def calc_change_pinpin_velocity(pin1, pin2):
+    # pin stats: [0] x, [1] y, [2] z [3] vx, [4] vy, [5] vz
+
+    x_tilde = pin1[:3] - pin2[:3]
+    y_tilde = np.array([x_tilde[2], 0, -x_tilde[0]])
+    z_tilde = np.array([-x_tilde[0] * x_tilde[1], x_tilde[2] ** 2 + x_tilde[0] ** 2, -x_tilde[2] * x_tilde[1]])
+
+    x_tilde = x_tilde * 1 / np.linalg.norm(x_tilde)
+    y_tilde = y_tilde * 1 / np.linalg.norm(y_tilde)
+    z_tilde = z_tilde * 1 / np.linalg.norm(z_tilde)
+
+    A = np.vstack((x_tilde, y_tilde, z_tilde)).T
+    A = np.vstack((A, np.zeros(3)))
+    A = np.hstack((A, np.array([0, 0, 0, 1]).reshape(-1, 1)))
+
+    v_tilde_pin1 = A @ np.hstack((pin1[3:], 1))
+    v_tilde_pin2 = A @ np.hstack((pin2[3:], 1))
+
+    v_tilde_pin1[0] = v_tilde_pin2[0]
+    v_tilde_pin2[0] = v_tilde_pin1[0]
+
+    inv_A = np.linalg.inv(A)
+
+    v_pin1 = inv_A @ v_tilde_pin1
+    v_pin2 = inv_A @ v_tilde_pin2
+
+    pin1[3:] = v_pin1[:3]
+    pin2[3:] = v_pin2[:3]
+
+    return pin1, pin2
+
+
+def calc_change_ballpin_velocity(ball, pin):
+    # ball stats: [0] x, [1] y, [2] vx, [3] vy, [4] wx, [5] wy
+    # pin stats: [0] x, [1] y, [2] z [3] vx, [4] vy, [5] vz
+
+    x_tilde = np.hstack((ball[:2], R_BALL)) - pin[:3]
+    y_tilde = np.array([x_tilde[2], 0, -x_tilde[0]])
+    z_tilde = np.array([-x_tilde[0] * x_tilde[1], x_tilde[2] ** 2 + x_tilde[0] ** 2, -x_tilde[2] * x_tilde[1]])
+
+    x_tilde = x_tilde * 1 / np.linalg.norm(x_tilde)
+    y_tilde = y_tilde * 1 / np.linalg.norm(y_tilde)
+    z_tilde = z_tilde * 1 / np.linalg.norm(z_tilde)
+
+    A = np.vstack((x_tilde, y_tilde, z_tilde)).T
+    A = np.vstack((A, np.zeros(3)))
+    A = np.hstack((A, np.array([0, 0, 0, 1]).reshape(-1, 1)))
+
+    v_tilde_ball = A @ np.hstack((ball[2:4], 0, 1))
+    v_tilde_pin = A @ np.hstack((pin[3:], 1))
+
+    v_tilde_ball[0] = (v_tilde_ball[0](BALL_M - PIN_M) + 2 * v_tilde_pin[0] * PIN_M) / (BALL_M + PIN_M)
+    v_tilde_pin[0] = (v_tilde_pin[0](PIN_M - BALL_M) + 2 * v_tilde_ball[0] * BALL_M) / (BALL_M + PIN_M)
+
+    inv_A = np.linalg.inv(A)
+
+    v_ball = inv_A @ v_tilde_ball
+    v_pin = inv_A @ v_tilde_pin
+
+    ball[2:4] = v_ball[:2]
+    pin[3:] = v_pin[:3]
+
+    return ball, pin
+
+
+def calc_hits_dt(ball_stats, pins_stats):
+    ball_stats = calc_throw_dt(ball_stats)
+
+    # pin stats: [0] x, [1] y, [2] z [3] vx, [4] vy, [5] vz
+    for i in range(pins_stats.shape[0]):
+        if pins_stats[i, 2] > 0:
+            pins_stats[i, :] = pins_stats[i, :] + np.array(
+                [pins_stats[i, 3], pins_stats[i, 4], pins_stats[i, 5], 0, 0, -G]
+            )
+        else:
+            Fx1, Fx2 = -OILED_MU * PIN_M * G * np.sign(pins_stats[i, 3:5])
+            pins_stats[i, :] = pins_stats[i, :] + np.array(
+                [pins_stats[i, 3] * DT, pins_stats[i, 4] * DT, pins_stats[i, 5] * DT,
+                 Fx1 / PIN_M * DT, Fx2 / PIN_M * DT, 0]
+            )
+    pins_stats[pins_stats[2] < R_PIN][:, 2] = R_PIN
+    pins_stats[pins_stats[2] < R_PIN][:, 5] = 0
+
+    for i in range(pins_stats.shape[0]):
+        for j in range(i + 1, pins_stats.shape[0]):
+            d = np.linalg.norm(pins_stats[i, :3] - pins_stats[j, :3])
+            if d > 2 * R_PIN:
+                continue
+            pins_stats[i], pins_stats[j] = calc_change_pinpin_velocity(pins_stats[i], pins_stats[j])
+        ball_stats, pins_stats[i] = calc_change_ballpin_velocity(ball_stats, pins_stats[i])
+
+    return ball_stats, pins_stats
 
 
 @memoize
@@ -194,7 +291,7 @@ def simulate_hits(x, y, vx, vy, wx, wy, show_video=False):
     ball_stats = np.array([x, y, vx, vy, wx, wy])
     pins_stats = init_pins()
     while not throw_ended(ball_stats, pins_stats):
-        calc_hits_dt(ball_stats, pins_stats)  # TODO HARD
+        ball_stats, pins_stats = calc_hits_dt(ball_stats, pins_stats)
         all_obj_locs.append(get_locs(pins_stats, ball_stats))
 
     if show_video:
@@ -220,7 +317,7 @@ def get_error_rates():
     getting a list of error rates to check
     :return: the list
     """
-    return [(ERR_RT) * i for i in range(int((1 / ERR_RT) / 4))]  # error up to 25%
+    return [ERR_RT * i for i in range(int((1 / ERR_RT) / 4))]  # error up to 25%
 
 
 def get_random_throwing_parameters(error_rate):
@@ -238,7 +335,7 @@ def get_random_throwing_parameters(error_rate):
 def main():
     error_rates = get_error_rates()
     throw_num_per_error_rate = REPEATITIONS
-    scores = np.zeros((error_rates, throw_num_per_error_rate))
+    scores = np.zeros((len(error_rates), throw_num_per_error_rate))
     for i, error_rate in enumerate(error_rates):
         for j in range(throw_num_per_error_rate):
             x, vx, vy, wx, wy = get_random_throwing_parameters(error_rate)  # y default is 0
