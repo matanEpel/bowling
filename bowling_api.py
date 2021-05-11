@@ -42,9 +42,9 @@ ORIG_PINS_LOC = [(720, 20.5), (730.375, 26.5), (740.75, 32.5), (751.125, 38.5), 
 ORIG_PINS_LOC = [(2.54 * p[1], 2.54 * p[0]) for p in ORIG_PINS_LOC]  # converting to cm
 STEP = 10
 # TODO: change values:
-BEST_VY = 400
-BEST_VX = 10
-BEST_WX = -100
+BEST_VY = 900
+BEST_VX = 40
+BEST_WX = -5
 BEST_WY = 0
 DEFAULT_VAR = 0.1
 
@@ -159,7 +159,7 @@ def still_going(ball_stats):
     return True
 
 
-def calc_throw_dt(ball_stats):
+def calc_throw_dt(ball_stats, sliding_change_x, sliding_change_y):
     """
     calculating the next location of the ball
     :param ball_stats: the ball stats (x,y,vx,vy,wx,wy)
@@ -169,10 +169,15 @@ def calc_throw_dt(ball_stats):
     Fx1, Fx2 = -OILED_MU * BALL_M * G * np.sign(ball_stats[2:4])
     ball_stats = ball_stats + np.array(
         #    x3              x4           Fx1/m         Fx2/m              Fx2*R/I             -Fx1*R/I
-        [ball_stats[2] * DT, ball_stats[3] * DT, Fx1 / BALL_M * DT, Fx2 / BALL_M * DT, Fx2 * R_BALL / BALL_I * DT,
-         -Fx1 * R_BALL / BALL_I * DT]
+        [ball_stats[2] * DT, ball_stats[3] * DT, Fx1 / BALL_M * DT, Fx2 / BALL_M * DT, (Fx2 * R_BALL/100) / BALL_I * DT,
+         -Fx1 * (R_BALL/100) / BALL_I * DT]
     )
+    if sliding_change_x:
+        ball_stats[2] = ball_stats[4]*R_BALL
+    if sliding_change_y:
+        ball_stats[3] = ball_stats[5]*R_BALL
     return ball_stats
+
 
 
 def get_locs(pins_stats, ball_stats):
@@ -217,14 +222,29 @@ def throw_ended(ball_stats, pins_stats):
 
 @memoize
 def simulate_throw(x, vx, vy, wx, wy, show_video=False, ball_locs_return=False):
+    v0x = vx
+    v0y = vy
+    w0x = wx
+    w0y = wy
     ball_locs = []
     ball_stats = np.array([x, 0, vx, vy, wx, wy])
+    sliding_change_x = False
+    sliding_change_y = False
+    count = 0
+    print((BALL_I*(v0x/100) + (w0x/100)*R_BALL/100))
+    print((OILED_MU*G*BALL_I+BALL_M*G*OILED_MU*(R_BALL/100)**2))
+    print((BALL_I*(v0x/100) + (w0x/100)*R_BALL/100)/(OILED_MU*G*BALL_I+BALL_M*G*OILED_MU*(R_BALL/100)**2))
     while still_going(ball_stats):
-        ball_stats = calc_throw_dt(ball_stats)
+        count += 1
+        if (BALL_I*(v0x/100) + (w0x/100)*R_BALL/100)/(OILED_MU*G*BALL_I+BALL_M*G*OILED_MU*(R_BALL/100)**2) <= count*DT:
+            sliding_change_x = True
+        if (BALL_I*v0y + w0y*R_BALL)/(OILED_MU*G*BALL_I+BALL_M*G*OILED_MU*(R_BALL/10)**2) <= count*DT:
+            sliding_change_y = True
+        ball_stats = calc_throw_dt(ball_stats, sliding_change_x, sliding_change_y)
         ball_locs.append(ball_stats[:2])
-
+    print("time:" + str(count*DT))
     if show_video:
-        create_video(np.array([[p] for p in ball_locs]))
+        create_video([[p] for p in ball_locs], 15)
     if ball_locs_return:
         return ball_locs, ball_stats
     return ball_stats
@@ -301,7 +321,7 @@ def calc_change_ballpin_velocity(ball, pin):
 
 
 def calc_hits_dt(ball_stats, pins_stats):
-    ball_stats = calc_throw_dt(ball_stats)
+    ball_stats = calc_throw_dt(ball_stats, False, False)
 
     # ball stats: [0] x, [1] y, [2] vx, [3] vy, [4] wx, [5] wy
     # pin stats: [0] x, [1] y, [2] z [3] vx, [4] vy, [5] vz
@@ -386,7 +406,7 @@ def main():
     # for i, error_rate in enumerate(error_rates):
     #     for j in range(throw_num_per_error_rate):
     x, vx, vy, wx, wy = get_random_throwing_parameters(error_rates[0])  # y default is 0
-    x, y, vx, vy, wx, wy = simulate_throw(x, vx, vy, wx, wy, False)
+    x, y, vx, vy, wx, wy = simulate_throw(x, vx, vy, wx, wy, True)
     score = simulate_hits(x, y, vx, vy, wx, wy, True)
     print(score)
     # scores[i, j] = score
