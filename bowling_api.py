@@ -35,7 +35,7 @@ BOWLING_SIZE = np.pi * R_BALL ** 2
 PIN_HEIGHT = 40
 ERR_RT = 0.01
 REPEATITIONS = 100
-DT = 0.001
+DT = 0.0001
 ORIG_PINS_LOC = [(720, 20.5), (730.375, 26.5), (740.75, 32.5), (751.125, 38.5), (730.375, 14.5), (740.75, 8.5),
                  (751.125, 2.5), (740.75, 20.5), (751.125, 26.5),
                  (751.125, 14.5)]  # the locations of the pins in inch's.
@@ -44,7 +44,7 @@ STEP = 10
 # TODO: change values:
 BEST_VY = 900
 BEST_VX = 40
-BEST_WX = -5
+BEST_WX = -5.5
 BEST_WY = 0
 DEFAULT_VAR = 0.1
 
@@ -328,7 +328,7 @@ def calc_hits_dt(ball_stats, pins_stats):
     for i in range(pins_stats.shape[0]):
         if pins_stats[i, 2] > R_PIN:
             pins_stats[i, :] = pins_stats[i, :] + np.array(
-                [pins_stats[i, 3] * DT, pins_stats[i, 4] * DT, -pins_stats[i, 5] * DT, 0, 0, G * DT]
+                [pins_stats[i, 3] * DT, pins_stats[i, 4] * DT, -pins_stats[i, 5] * DT, 0, 0, 100*G * DT]
             )
         else:
             Fx1, Fx2 = -OILED_MU * PIN_M * G * np.sign(pins_stats[i, 3:5])
@@ -406,8 +406,8 @@ def main():
     # for i, error_rate in enumerate(error_rates):
     #     for j in range(throw_num_per_error_rate):
     x, vx, vy, wx, wy = get_random_throwing_parameters(error_rates[0])  # y default is 0
-    x, y, vx, vy, wx, wy = simulate_throw(x, vx, vy, wx, wy, True)
-    score = simulate_hits(x, y, vx, vy, wx, wy, True)
+    x, y, vx, vy, wx, wy = simulate_throw(x, vx, vy, wx, wy, False)
+    score = simulate_hits(x, y, vx, vy, wx, wy, False)
     print(score)
     # scores[i, j] = score
     # avg_hits = np.average(scores, axis=1)
