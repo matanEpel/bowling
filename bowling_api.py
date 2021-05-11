@@ -3,6 +3,7 @@ from math import dist
 import cv2
 import matplotlib.pyplot as plt
 import numpy as np
+from mpl_toolkits.mplot3d import Axes3D
 
 """
 BALL: (x, y, vx, vy, wx, wy)
@@ -55,11 +56,12 @@ def create_video_from_frames(amount_of_frames, fps):
         img = cv2.imread('data/frame' + str(i) + '.png')
         img_array.append(img)
 
-    out = cv2.VideoWriter('throw.mp4',0x7634706d, fps/10, (960, 480))
+    out = cv2.VideoWriter('throw.mp4', 0x7634706d, fps / 10, (960, 480))
 
     for i in range(len(img_array)):
         out.write(img_array[i])
     out.release()
+
 
 def create_video_from_frames_hit(amount_of_frames, fps):
     img_array = []
@@ -67,11 +69,12 @@ def create_video_from_frames_hit(amount_of_frames, fps):
         img = cv2.imread('data/frame' + str(i) + '.png')
         img_array.append(img)
 
-    out = cv2.VideoWriter('hit.mp4',0x7634706d, fps/10, (960, 480))
+    out = cv2.VideoWriter('hit.mp4', 0x7634706d, fps / 10, (960, 480))
 
     for i in range(len(img_array)):
         out.write(img_array[i])
     out.release()
+
 
 def create_video_hit(all_obj_locs, fps=30):
     """
@@ -83,18 +86,22 @@ def create_video_hit(all_obj_locs, fps=30):
     i = 0
     print(len(all_obj_locs[::STEP]))
     for f in all_obj_locs[::STEP]:
-        plt.figure(figsize=(SIZE * 2, SIZE), dpi=80)
+        fig = plt.figure(figsize=(SIZE * 2, SIZE), dpi=80)
+        ax = Axes3D(fig)
         plt.ylim([-20, 120])
-        plt.xlim([1800-40, LANE_LENGTH + 50+40])
+        plt.xlim([1800 - 40, LANE_LENGTH + 50 + 40])
+        # plt.axis("off")
         x_s = [p[1] for p in f]
         y_s = [p[0] for p in f]
+        z_s = [p[2] for p in f]
         s = 1000
-        plt.scatter(x_s, y_s, s=s)
+        ax.scatter(x_s, y_s, z_s, s=s)
         plt.savefig("data/frame" + str(i) + ".png")
         plt.close()
         # plt.show()
         i += 1
-    create_video_from_frames_hit(len(all_obj_locs[::STEP]), fps/STEP/DT/10)
+    create_video_from_frames_hit(len(all_obj_locs[::STEP]), fps / STEP / DT / 10)
+
 
 def create_video(all_obj_locs, fps=30):
     """
@@ -107,13 +114,13 @@ def create_video(all_obj_locs, fps=30):
     print(len(all_obj_locs[::STEP]))
     for f in all_obj_locs[::STEP]:
         plt.figure(figsize=(SIZE * 2, SIZE), dpi=80)
-        plt.ylim([-LANE_LENGTH/4+25, LANE_LENGTH/4+75])
+        plt.ylim([-LANE_LENGTH / 4 + 25, LANE_LENGTH / 4 + 75])
         plt.xlim([-50, LANE_LENGTH + 50])
         x_s = [p[1] for p in f]
         y_s = [p[0] for p in f]
         s = 10
-        plt.plot([0, 0], [0,LANE_WIDTH], color="red")
-        plt.plot([LANE_LENGTH, LANE_LENGTH], [0,LANE_WIDTH], color="red")
+        plt.plot([0, 0], [0, LANE_WIDTH], color="red")
+        plt.plot([LANE_LENGTH, LANE_LENGTH], [0, LANE_WIDTH], color="red")
         plt.plot([0, LANE_LENGTH], [0, 0], color="red")
         plt.plot([0, LANE_LENGTH], [LANE_WIDTH, LANE_WIDTH], color="red")
         plt.scatter(x_s, y_s, s=s)
@@ -121,7 +128,7 @@ def create_video(all_obj_locs, fps=30):
         plt.close()
         # plt.show()
         i += 1
-    create_video_from_frames(len(all_obj_locs[::STEP]), fps/STEP/DT)
+    create_video_from_frames(len(all_obj_locs[::STEP]), fps / STEP / DT)
 
 
 def memoize(f):
@@ -132,9 +139,10 @@ def memoize(f):
     """
     memo = {}
 
-    def helper(*x):
+    def helper(*args, **kwargs):
+        x = args, tuple(kwargs.items())
         if x not in memo:
-            memo[x] = f(*x)
+            memo[x] = f(*args, **kwargs)
         return memo[x]
 
     return helper
@@ -169,15 +177,15 @@ def calc_throw_dt(ball_stats, sliding_change_x, sliding_change_y):
     Fx1, Fx2 = -OILED_MU * BALL_M * G * np.sign(ball_stats[2:4])
     ball_stats = ball_stats + np.array(
         #    x3              x4           Fx1/m         Fx2/m              Fx2*R/I             -Fx1*R/I
-        [ball_stats[2] * DT, ball_stats[3] * DT, Fx1 / BALL_M * DT, Fx2 / BALL_M * DT, (Fx2 * R_BALL/100) / BALL_I * DT,
-         -Fx1 * (R_BALL/100) / BALL_I * DT]
+        [ball_stats[2] * DT, ball_stats[3] * DT, Fx1 / BALL_M * DT, Fx2 / BALL_M * DT,
+         (Fx2 * R_BALL / 100) / BALL_I * DT,
+         -Fx1 * (R_BALL / 100) / BALL_I * DT]
     )
     if sliding_change_x:
-        ball_stats[2] = ball_stats[4]*R_BALL
+        ball_stats[2] = ball_stats[4] * R_BALL
     if sliding_change_y:
-        ball_stats[3] = ball_stats[5]*R_BALL
+        ball_stats[3] = ball_stats[5] * R_BALL
     return ball_stats
-
 
 
 def get_locs(pins_stats, ball_stats):
@@ -187,7 +195,7 @@ def get_locs(pins_stats, ball_stats):
     :param ball_stats: the ball stats
     :return: the ball and pins locations
     """
-    return np.vstack((pins_stats[:, :2], ball_stats[:2]))
+    return np.vstack((pins_stats[:, :3], np.array([ball_stats[0], ball_stats[1], R_BALL])))
 
 
 def calc_score(pins_stats):
@@ -197,10 +205,10 @@ def calc_score(pins_stats):
     :return:
     """
     count = 0
-    new = pins_stats[:,:2]-ORIG_PINS_LOC
+    new = pins_stats[:, :2] - ORIG_PINS_LOC
     for p in new:
-        if np.linalg.norm(p) > R_PIN/2:
-            count+=1
+        if np.linalg.norm(p) > R_PIN / 2:
+            count += 1
     return count
 
 
@@ -213,10 +221,12 @@ def throw_ended(ball_stats, pins_stats):
     """
     # ball stats: [0] x, [1] y, [2] vx, [3] vy, [4] wx, [5] wy
     # pin stats: [0] x, [1] y, [2] z [3] vx, [4] vy, [5] vz
-    ball_stopped = (np.isclose(ball_stats[2], 0) and np.isclose(ball_stats[3], 0)) or ball_stats[0] < 0 or ball_stats[0] > LANE_WIDTH or \
+    ball_stopped = (np.isclose(ball_stats[2], 0) and np.isclose(ball_stats[3], 0)) or ball_stats[0] < 0 or ball_stats[
+        0] > LANE_WIDTH or \
                    ball_stats[1] > LANE_LENGTH or ball_stats[1] < 0
-    pins_stopped = all(np.isclose(p[3], 0) and np.isclose(p[4], 0) and np.isclose(p[5], 0) or p[0] < 0 or p[0] > LANE_WIDTH or \
-                   p[1] > LANE_LENGTH or p[1] < 0 for p in pins_stats)  # p[3:6] = vx, vy, vz
+    pins_stopped = all(
+        np.isclose(p[3], 0) and np.isclose(p[4], 0) and np.isclose(p[5], 0) or p[0] < 0 or p[0] > LANE_WIDTH or \
+        p[1] > LANE_LENGTH or p[1] < 0 for p in pins_stats)  # p[3:6] = vx, vy, vz
     return ball_stopped and pins_stopped
 
 
@@ -231,18 +241,21 @@ def simulate_throw(x, vx, vy, wx, wy, show_video=False, ball_locs_return=False):
     sliding_change_x = False
     sliding_change_y = False
     count = 0
-    print((BALL_I*(v0x/100) + (w0x/100)*R_BALL/100))
-    print((OILED_MU*G*BALL_I+BALL_M*G*OILED_MU*(R_BALL/100)**2))
-    print((BALL_I*(v0x/100) + (w0x/100)*R_BALL/100)/(OILED_MU*G*BALL_I+BALL_M*G*OILED_MU*(R_BALL/100)**2))
+    print((BALL_I * (v0x / 100) + (w0x / 100) * R_BALL / 100))
+    print((OILED_MU * G * BALL_I + BALL_M * G * OILED_MU * (R_BALL / 100) ** 2))
+    print((BALL_I * (v0x / 100) + (w0x / 100) * R_BALL / 100) / (
+            OILED_MU * G * BALL_I + BALL_M * G * OILED_MU * (R_BALL / 100) ** 2))
     while still_going(ball_stats):
         count += 1
-        if (BALL_I*(v0x/100) + (w0x/100)*R_BALL/100)/(OILED_MU*G*BALL_I+BALL_M*G*OILED_MU*(R_BALL/100)**2) <= count*DT:
+        if (BALL_I * (v0x / 100) + (w0x / 100) * R_BALL / 100) / (
+                OILED_MU * G * BALL_I + BALL_M * G * OILED_MU * (R_BALL / 100) ** 2) <= count * DT:
             sliding_change_x = True
-        if (BALL_I*v0y + w0y*R_BALL)/(OILED_MU*G*BALL_I+BALL_M*G*OILED_MU*(R_BALL/10)**2) <= count*DT:
+        if (BALL_I * v0y + w0y * R_BALL) / (
+                OILED_MU * G * BALL_I + BALL_M * G * OILED_MU * (R_BALL / 10) ** 2) <= count * DT:
             sliding_change_y = True
         ball_stats = calc_throw_dt(ball_stats, sliding_change_x, sliding_change_y)
         ball_locs.append(ball_stats[:2])
-    print("time:" + str(count*DT))
+    print("time:" + str(count * DT))
     if show_video:
         create_video([[p] for p in ball_locs], 15)
     if ball_locs_return:
@@ -306,8 +319,8 @@ def calc_change_ballpin_velocity(ball, pin):
     v_tilde_ball = A @ np.hstack((ball[2:4], 0, 1))
     v_tilde_pin = A @ np.hstack((pin[3:], 1))
 
-    v_tilde_ball[0] = (v_tilde_ball[0]*(BALL_M - PIN_M) + 2 * v_tilde_pin[0] * PIN_M) / (BALL_M + PIN_M)
-    v_tilde_pin[0] = (v_tilde_pin[0]*(PIN_M - BALL_M) + 2 * v_tilde_ball[0] * BALL_M) / (BALL_M + PIN_M)
+    v_tilde_ball[0] = (v_tilde_ball[0] * (BALL_M - PIN_M) + 2 * v_tilde_pin[0] * PIN_M) / (BALL_M + PIN_M)
+    v_tilde_pin[0] = (v_tilde_pin[0] * (PIN_M - BALL_M) + 2 * v_tilde_ball[0] * BALL_M) / (BALL_M + PIN_M)
 
     inv_A = np.linalg.inv(A)
 
@@ -328,7 +341,7 @@ def calc_hits_dt(ball_stats, pins_stats):
     for i in range(pins_stats.shape[0]):
         if pins_stats[i, 2] > R_PIN:
             pins_stats[i, :] = pins_stats[i, :] + np.array(
-                [pins_stats[i, 3] * DT, pins_stats[i, 4] * DT, -pins_stats[i, 5] * DT, 0, 0, 100*G * DT]
+                [pins_stats[i, 3] * DT, pins_stats[i, 4] * DT, -pins_stats[i, 5] * DT, 0, 0, 100 * G * DT]
             )
         else:
             Fx1, Fx2 = -OILED_MU * PIN_M * G * np.sign(pins_stats[i, 3:5])
@@ -336,8 +349,9 @@ def calc_hits_dt(ball_stats, pins_stats):
                 [pins_stats[i, 3] * DT, pins_stats[i, 4] * DT, -pins_stats[i, 5] * DT,
                  0, 0, 0]
             )
-    pins_stats[pins_stats[:, 2] < R_PIN][:, 5] = 0
-    pins_stats[pins_stats[:, 2] < R_PIN][:, 2] = R_PIN
+    for i in (pins_stats[:, 2] < R_PIN).nonzero()[0]:
+        pins_stats[i, 5] = 0
+        pins_stats[i, 2] = R_PIN
 
     for i in range(pins_stats.shape[0]):
         for j in range(i + 1, pins_stats.shape[0]):
@@ -403,15 +417,15 @@ def main():
     error_rates = get_error_rates()
     throw_num_per_error_rate = REPEATITIONS
     scores = np.zeros((len(error_rates), throw_num_per_error_rate))
-    # for i, error_rate in enumerate(error_rates):
-    #     for j in range(throw_num_per_error_rate):
-    x, vx, vy, wx, wy = get_random_throwing_parameters(error_rates[0])  # y default is 0
-    x, y, vx, vy, wx, wy = simulate_throw(x, vx, vy, wx, wy, False)
-    score = simulate_hits(x, y, vx, vy, wx, wy, False)
-    print(score)
-    # scores[i, j] = score
-    # avg_hits = np.average(scores, axis=1)
-    # plot_graph(error_rates, avg_hits)
+    for i, error_rate in enumerate(error_rates):
+        for j in range(throw_num_per_error_rate):
+            x, vx, vy, wx, wy = get_random_throwing_parameters(error_rates[0])  # y default is 0
+            x, y, vx, vy, wx, wy = simulate_throw(x, vx, vy, wx, wy, show_video=False)
+            score = simulate_hits(x, y, vx, vy, wx, wy, show_video=True)
+            # print(score)
+            scores[i, j] = score
+    avg_hits = np.average(scores, axis=1)
+    plot_graph(error_rates, avg_hits)
 
 
 if __name__ == '__main__':
