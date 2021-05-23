@@ -32,15 +32,17 @@ ORIG_PINS_LOC = [(720, 20.5), (730.375, 26.5), (740.75, 32.5), (751.125, 38.5), 
                  (751.125, 14.5)]  # the locations of the pins in inch's.
 ORIG_PINS_LOC = [(2.54 * p[1], 2.54 * p[0]) for p in ORIG_PINS_LOC]  # converting to cm
 
+
+STEP = 3
+
 ########best:
-# STEP = 3
-# BEST_VY = 800.353
-# BEST_X = 52.6831
-# BEST_VX = 20.4829
-# BEST_WX = -2.519
-# BEST_WY = 0.018
-# DEFAULT_VAR = 1
-# ENERGY_LOSS = 0.95
+BEST_VY = 800.353
+BEST_X = 52.6831
+BEST_VX = 20.4829
+BEST_WX = -2.519
+BEST_WY = 0.018
+DEFAULT_VAR = 1
+ENERGY_LOSS = 0.95
 
 #######standard:
 # BEST_VY = 800
@@ -50,17 +52,18 @@ ORIG_PINS_LOC = [(2.54 * p[1], 2.54 * p[0]) for p in ORIG_PINS_LOC]  # convertin
 # BEST_WY = 0
 # DEFAULT_VAR = 1
 # ENERGY_LOSS = 0.95
-######high energy loss:
+# #####high energy loss:
 # ENERGY_LOSS = 0.7
 
 ######out of bounds:
-BEST_VY = 800
-BEST_X = LANE_WIDTH/2
-BEST_VX = 40
-BEST_WX = 0
-BEST_WY = 0
-DEFAULT_VAR = 1
-ENERGY_LOSS = 0.95
+# BEST_VY = 800
+# BEST_X = LANE_WIDTH/2
+# BEST_VX = 40
+# BEST_WX = 0
+# BEST_WY = 0
+# DEFAULT_VAR = 1
+# ENERGY_LOSS = 0.95
+
 MARGIN = 20
 
 
@@ -469,9 +472,9 @@ def main():
         for j in range(throw_num_per_error_rate):
             x, vx, vy, wx, wy = get_random_throwing_parameters(error_rate)  # y default is 0
             if i == 0 and j == 0 and error_rate == error_rates[0]:
-                x, y, vx, vy, wx, wy = simulate_throw(x, vx, vy, wx, wy, show_video=False)
+                x, y, vx, vy, wx, wy = simulate_throw(x, vx, vy, wx, wy, show_video=True)
                 print(vx, vy)
-                score = simulate_hits(x, y, vx, vy, wx, wy, show_video=False)
+                score = simulate_hits(x, y, vx, vy, wx, wy, show_video=True)
             else:
                 x, y, vx, vy, wx, wy = simulate_throw(x, vx, vy, wx, wy, show_video=False)
                 score = simulate_hits(x, y, vx, vy, wx, wy, show_video=False)
