@@ -25,13 +25,12 @@ SIZE = 6
 BOWLING_SIZE = np.pi * R_BALL ** 2
 PIN_HEIGHT = 40
 ERR_RT = 0.01
-REPEATITIONS = 50
+REPEATITIONS = 10
 DT = 0.01
 ORIG_PINS_LOC = [(720, 20.5), (730.375, 26.5), (740.75, 32.5), (751.125, 38.5), (730.375, 14.5), (740.75, 8.5),
                  (751.125, 2.5), (740.75, 20.5), (751.125, 26.5),
                  (751.125, 14.5)]  # the locations of the pins in inch's.
 ORIG_PINS_LOC = [(2.54 * p[1], 2.54 * p[0]) for p in ORIG_PINS_LOC]  # converting to cm
-
 
 STEP = 3
 
@@ -53,11 +52,11 @@ ENERGY_LOSS = 0.95
 # DEFAULT_VAR = 1
 # ENERGY_LOSS = 0.95
 # #####high energy loss:
-# ENERGY_LOSS = 0.7
+# ENERGY_LOSS = 0.4
 
 ######out of bounds:
 # BEST_VY = 800
-# BEST_X = LANE_WIDTH/2
+# BEST_X = LANE_WIDTH / 2
 # BEST_VX = 40
 # BEST_WX = 0
 # BEST_WY = 0
@@ -105,6 +104,7 @@ def create_video_hit(all_obj_locs, fps=30):
     for f in all_obj_locs[::STEP]:
         fig = plt.figure(figsize=(SIZE * 2, SIZE), dpi=80)
         ax = fig.add_subplot(projection='3d')
+        ax.set_axis_off()
         plt.ylim([-70, 170])
         plt.xlim([1800 - 40, LANE_LENGTH + 50 + 40])
 
@@ -419,7 +419,7 @@ def simulate_hits(x, y, vx, vy, wx, wy, show_video=False):
     ball_stats = np.array([x, y, vx, vy, wx, wy])
     pins_stats = init_pins()
     count = 0
-    while not throw_ended(ball_stats, pins_stats) and count * DT < 4:
+    while not throw_ended(ball_stats, pins_stats) and count * DT < 2:
         count += 1
         ball_stats, pins_stats = calc_hits_dt(ball_stats, pins_stats)
         for p in pins_stats:
@@ -451,38 +451,119 @@ def get_error_rates():
     return [ERR_RT * i for i in range(int((1 / ERR_RT) / 4))]  # error up to 25%
 
 
-def get_random_throwing_parameters(error_rate):
+def get_random_throwing_parameters_pro(x, vx, vy, wx, wy):
     """
     getting the trowing parameters by error rate (based on the best throw)
     :param error_rate: the error rate
     :return: the throwing parameters
     """
-    return np.random.normal(BEST_X, error_rate * DEFAULT_VAR), np.random.normal(BEST_VX,
-                                                                                error_rate * DEFAULT_VAR), \
-           np.random.normal(BEST_VY, error_rate * DEFAULT_VAR), np.random.normal(BEST_WX, error_rate * DEFAULT_VAR), \
-           np.random.normal(BEST_WY, error_rate * DEFAULT_VAR)
+    return np.random.normal(x, 1), np.random.normal(vx, 0.5), \
+           np.random.normal(vy, 5), np.random.normal(wx, 0.2), \
+           np.random.normal(wy, 0.2)
+
+
+def get_random_throwing_parameters_average(x, vx, vy, wx, wy):
+    """
+    getting the trowing parameters by error rate (based on the best throw)
+    :param error_rate: the error rate
+    :return: the throwing parameters
+    """
+    return np.random.normal(x, 5), np.random.normal(vx, 1), \
+           np.random.normal(vy, 20), np.random.normal(wx, 1), \
+           np.random.normal(wy, 1)
 
 
 def main():
-    error_rates = get_error_rates()
-    throw_num_per_error_rate = REPEATITIONS
-    scores = np.zeros((len(error_rates), throw_num_per_error_rate))
-    print(len(error_rates))
-    for i, error_rate in enumerate(error_rates):
-        for j in range(throw_num_per_error_rate):
-            x, vx, vy, wx, wy = get_random_throwing_parameters(error_rate)  # y default is 0
-            if i == 0 and j == 0 and error_rate == error_rates[0]:
-                x, y, vx, vy, wx, wy = simulate_throw(x, vx, vy, wx, wy, show_video=True)
-                print(vx, vy)
-                score = simulate_hits(x, y, vx, vy, wx, wy, show_video=True)
-            else:
-                x, y, vx, vy, wx, wy = simulate_throw(x, vx, vy, wx, wy, show_video=False)
-                score = simulate_hits(x, y, vx, vy, wx, wy, show_video=False)
-            if score > 9:
-                print(score)
-            scores[i, j] = score
-    avg_hits = np.average(scores, axis=1)
-    plot_graph(error_rates, avg_hits)
+    # epochs = 100
+    # x_b, vx_b, vy_b, wx_b, wy_b = LANE_WIDTH / 2, 0, 800, 0, 0
+    # x_b_c, vx_b_c, vy_b_c, wx_b_c, wy_b_c = x_b, vx_b, vy_b, wx_b, wy_b
+    # curr_score_best = 0
+    # print(x_b, vx_b, vy_b, wx_b, wy_b)
+    # for j in range(epochs):
+    #     print("epoch = " + str(j + 1))
+    #
+    #     changed = False
+    #     x_b, vx_b, vy_b, wx_b, wy_b = x_b_c, vx_b_c, vy_b_c, wx_b_c, wy_b_c
+    #     for i in range(-10, 10):
+    #         print(i)
+    #         scores = []
+    #         for k in range(REPEATITIONS):
+    #             x, vx, vy, wx, wy = get_random_throwing_parameters_average(x_b + 0.1 * i, vx_b + 0.05 * i,
+    #                                                                        vy_b + 0.5 * i, wx_b + 0.05 * i,
+    #                                                                        wy_b + 0.05 * i)  # y default is 0
+    #             x, y, vx, vy, wx, wy = simulate_throw(x, vx, vy, wx, wy, show_video=False)
+    #             score1 = simulate_hits(x, y, vx, vy, wx, wy, show_video=False)
+    #             scores.append(score1)
+    #         # print(np.average(scores))
+    #         if np.average(scores) > curr_score_best:
+    #             changed = True
+    #             x_b_c, vx_b_c, vy_b_c, wx_b_c, wy_b_c = x_b + 0.2 * i, vx_b + 0.1 * i, vy_b + 1 * i, wx_b + 0.1 * i, wy_b + 0.1 * i
+    #             # print(np.average(scores))
+    #             # print(x_b_c, vx_b_c, vy_b_c, wx_b_c, wy_b_c)
+    #             curr_score_best = np.average(scores)
+    #
+    #     if not changed:
+    #         break
+    # print("score")
+    # print(curr_score_best)
+    # print("avg best aprams:")
+    # print(x_b_c, vx_b_c, vy_b_c, wx_b_c)
+    #
+    # x_b, vx_b, vy_b, wx_b, wy_b = BEST_X, BEST_VX, BEST_VY, BEST_WX, BEST_WY
+    # x_b_c, vx_b_c, vy_b_c, wx_b_c, wy_b_c = x_b, vx_b, vy_b, wx_b, wy_b
+    # curr_score_best = 0
+    # print(x_b, vx_b, vy_b, wx_b, wy_b)
+    # for j in range(epochs):
+    #     print("epoch = " + str(j + 1))
+    #
+    #     changed = False
+    #
+    #     x_b, vx_b, vy_b, wx_b, wy_b = x_b_c, vx_b_c, vy_b_c, wx_b_c, wy_b_c
+    #     for i in range(-10, 10):
+    #         print(i)
+    #         scores = []
+    #         for k in range(REPEATITIONS):
+    #             x, vx, vy, wx, wy = get_random_throwing_parameters_average(x_b + 0.1 * i, vx_b + 0.05 * i,
+    #                                                                        vy_b + 0.5 * i, wx_b + 0.05 * i,
+    #                                                                        wy_b + 0.05 * i)  # y default is 0
+    #             x, y, vx, vy, wx, wy = simulate_throw(x, vx, vy, wx, wy, show_video=False)
+    #             score1 = simulate_hits(x, y, vx, vy, wx, wy, show_video=False)
+    #             scores.append(score1)
+    #         # print(np.average(scores))
+    #         if np.average(scores) > curr_score_best:
+    #             changed = True
+    #             x_b_c, vx_b_c, vy_b_c, wx_b_c, wy_b_c = x_b + 0.2 * i, vx_b + 0.1 * i, vy_b + 1 * i, wx_b + 0.1 * i, wy_b + 0.1 * i
+    #             # print("new best:")
+    #             # print(np.average(scores))
+    #             # print(x_b_c, vx_b_c, vy_b_c, wx_b_c, wy_b_c)
+    #             curr_score_best = np.average(scores)
+    #
+    #     if not changed:
+    #         break
+    # print("score")
+    # print(curr_score_best)
+    # print("best best aprams:")
+    # print(x_b_c, vx_b_c, vy_b_c, wx_b_c)
+
+    scores = []
+    for i in range(50):
+        x, vx, vy, wx, wy = get_random_throwing_parameters_average(54.6831, 21.4829, 810.353, -1.5190000000000001, -1.519)  # y default is 0
+        x, y, vx, vy, wx, wy = simulate_throw(x, vx, vy, wx, wy, show_video=False)
+        score1 = simulate_hits(x, y, vx, vy, wx, wy, show_video=False)
+        print(score1)
+        scores.append(score1)
+    print("average")
+    print(np.average(scores))
+    scores = []
+    for i in range(50):
+        x, vx, vy, wx, wy = get_random_throwing_parameters_pro(54.6831, 21.4829, 810.353, -1.5190000000000001,
+                                                                   -1.519)  # y default is 0
+        x, y, vx, vy, wx, wy = simulate_throw(x, vx, vy, wx, wy, show_video=False)
+        score1 = simulate_hits(x, y, vx, vy, wx, wy, show_video=False)
+        print(score1)
+        scores.append(score1)
+    print("best")
+    print(np.average(scores))
 
 
 if __name__ == '__main__':
